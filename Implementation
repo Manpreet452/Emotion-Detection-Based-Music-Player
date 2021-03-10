@@ -1,0 +1,75 @@
+import cv2
+import numpy as np
+
+wh=320
+
+conf_threshold=0.1
+cap=cv2.VideoCapture(0)
+
+classes=['happy','sad','focused','curious','angry','neutral','confidence','surprised']
+
+weights_file='C:/Users/user/Desktop/Projects/emotion detection/Scripts/yolov4-obj_best.weights'
+cfg_file='C:/Users/user/Desktop/Projects/emotion detection/Scripts/yolov4-obj.cfg'
+net=cv2.dnn.readNetFromDarknet(cfg_file, weights_file)
+net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+    
+def bhejafry():
+    temp=0
+    while True:
+        #read frame
+        ret, frame=cap.read()
+        #converted to binary
+        blob=cv2.dnn.blobFromImage(frame, 1/255, (wh,wh), [0,0,0], 1, crop=False)
+        
+        if(temp%1000==0):
+            #temp=0
+            #input setup
+            net.setInput(blob)
+            #output layers ka naam
+            layers=net.getLayerNames()
+            outputLayers=net.getUnconnectedOutLayers()
+            outputLayerNames=[layers[i[0]-1] for i in outputLayers]
+
+            #forwarding input to neural net
+            outputs=net.forward(outputLayerNames)
+            bbox=[]
+            classId=[]
+            confidence=[]
+            height,width, channels=frame.shape
+
+            #getting rid of bad detections
+            for i in outputs:
+                for j in i:
+                    class_id=np.argmax(j[5:])
+                    conf=j[5+class_id]
+                    if conf > conf_threshold:
+                        confidence.append(float(j[class_id]))
+                        classId.append(class_id)
+                        w=int(j[2]*width)
+                        h=int(j[3]*height)
+                        x=int((j[0]*width) - (w/2))
+                        y=int((j[1]*height) - (h/2))
+                        bbox.append([x, y, w, h])
+            print(len(bbox))
+            
+            #non maximum supression
+            nms=cv2.dnn.NMSBoxes(bbox, confidence, conf_threshold, 0.1)
+            
+            #making rectangle boxes
+            for i in nms:
+                i=i[0]
+                yeboxchaiye=bbox[i]
+                x, y, w, h=yeboxchaiye[0], yeboxchaiye[1], yeboxchaiye[2], yeboxchaiye[3]
+                cv2.rectangle(frame, (x,y), (x+w , y+h), (0,255,0), thickness=2)
+                cv2.putText(frame, ((classes[classId[i]])+" "+str(round(confidence[i]*100))+"%") , (x, y-10), fontFace=cv2.FONT_HERSHEY_SIMPLEX,fontScale=0.5, color=(0,255,0), thickness=2)
+                yield {'Frame':frame,'className':classes[classId[i]]}
+        #print('nms',len(nms))
+        #print('bbox',len(bbox),'\n')
+        temp+=1       
+        print(temp)
+        cv2.imshow("",frame)
+        if(cv2.waitKey(1)==ord('q')):
+            break 
+    cv2.destroyAllWindows()
+
