@@ -1,0 +1,16 @@
+from pygame import mixer
+import cv2
+from implementation import bhejafry
+
+temp=0
+#print(bhejafry())
+mixer.init()
+for gesture in bhejafry():
+    cv2.imshow("detected",gesture['Frame'])
+    cv2.waitKey(1)
+    if gesture['className']=='happy':
+        mixer.music.load('Love You Zindagi (Dear Zindagi) 128 Kbps.mp3')
+        mixer.music.play()
+    elif gesture['className']=='focused':
+        mixer.music.load('Brothers Anthem - Brothers 128 Kbps.mp3')
+        mixer.music.play()
